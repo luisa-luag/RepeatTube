@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <com.google.android.youtube.player.YouTubeThumbnailView
+        android:id="@+id/ib_item_search_result"
+        android:layout_height="90sp"
+        android:layout_width="160sp" />
+    <ImageView
+        android:id="@+id/iv_loading_thumbnail"
+        android:layout_height="90sp"
+        android:layout_width="160sp"
+        android:src="@drawable/loading"
+        android:background="#00000000"
+
+        />
+    <TextView
+        android:id="@+id/tv_item_search_result"
+        android:layout_width="match_parent"
+        android:layout_height="100sp"
+        android:layout_marginLeft="160sp"
+        android:fontFamily="monospace"
+        android:textSize="18sp"/>
+
+
+</FrameLayout>
