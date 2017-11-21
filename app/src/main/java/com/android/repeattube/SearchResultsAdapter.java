@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.google.android.youtube.player.YouTubeInitializationResult;
@@ -14,6 +15,7 @@ import com.google.android.youtube.player.YouTubeThumbnailView;
 import com.google.api.services.youtube.model.ResourceId;
 import com.google.api.services.youtube.model.SearchResult;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,7 +25,7 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
 
     private final int UNINITIALIZED = 1;
     private final int INITIALIZED = 2;
-    private int numberItems;
+    private int numberItems = 0;
 
     final private SearchResultsAdapterOnClickListener clickListener;
     private List<SearchResult> results;
@@ -37,12 +39,15 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
     }
 
     /**
-     * Gets the String ID of a video.
+     * Gets the data: String ID, title of a video.
      * @param pos Position of video in the List.
-     * @return Youtube's video id.
+     * @return Youtube's video data.
      */
-    public String getListVideoId(int pos) {
-        return results.get(pos).getId().getVideoId();
+    public ArrayList<String> getListVideoData(int pos) {
+        ArrayList<String> list = new ArrayList<>();
+        list.add(results.get(pos).getId().getVideoId());
+        list.add(results.get(pos).getSnippet().getTitle());
+        return list;
     }
 
     /**
@@ -51,8 +56,10 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
     class SearchResultViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         TextView listItemSearchResult;
         YouTubeThumbnailView listItemThumbnail;
+        YouTubeThumbnailLoader loader;
         View view;
-        ImageView loadingIV;    //TODO Change load image for a progress bar
+        ProgressBar loadingPB;    //TODO Change load image for a progress bar
+        ProgressBar loadingResultPB;
 
         /**
          * Constructor, get views references, set loading visible, and initialize the view.
@@ -64,9 +71,11 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
 
             listItemSearchResult = itemView.findViewById(R.id.tv_item_search_result);
             listItemThumbnail = itemView.findViewById(R.id.ib_item_search_result);
-            loadingIV = itemView.findViewById(R.id.iv_loading_thumbnail);
+            loadingPB = itemView.findViewById(R.id.pb_loading_thumbnail);
+            loadingResultPB = itemView.findViewById(R.id.pb_load_list_result);
 
-            loadingIV.setVisibility(View.VISIBLE);
+            loadingPB.setVisibility(View.VISIBLE);
+            listItemThumbnail.setVisibility(View.INVISIBLE);
 
             initialize();
             itemView.setOnClickListener(this);
@@ -84,9 +93,9 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
             //Initializes the thumbnail
             listItemThumbnail.initialize(Config.YOUTUBE_API_KEY, new YouTubeThumbnailView.OnInitializedListener() {
                 @Override
-                public void onInitializationSuccess(YouTubeThumbnailView youTubeThumbnailView, YouTubeThumbnailLoader youTubeThumbnailLoader) {
+                public void onInitializationSuccess(YouTubeThumbnailView youTubeThumbnailView, final YouTubeThumbnailLoader youTubeThumbnailLoader) {
                     listItemThumbnail.setTag(R.id.thumbnailloader, youTubeThumbnailLoader);
-
+                    loader = youTubeThumbnailLoader;
                     //Gets videoId and verify if it's valid
                     String videoId = (String) listItemThumbnail.getTag(R.id.videoid);
                     if(videoId != null && !videoId.isEmpty()){
@@ -95,7 +104,8 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
                             @Override
                             public void onThumbnailLoaded(YouTubeThumbnailView youTubeThumbnailView, String s) {
                                 //Sets loading invisible after successful load.
-                                loadingIV.setVisibility(View.INVISIBLE);
+                                loadingPB.setVisibility(View.INVISIBLE);
+                                youTubeThumbnailView.setVisibility(View.VISIBLE);
                             }
 
                             @Override
@@ -122,6 +132,13 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
         public void onClick(View view) {
             int clickedPos = getAdapterPosition();
             clickListener.onListClick(clickedPos);
+        }
+
+        /**
+         * Releases the ViewHolder
+         */
+        public void release() {
+            if (loader != null) loader.release();
         }
     }
 
@@ -159,38 +176,55 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
      */
     @Override
     public void onBindViewHolder(final SearchResultViewHolder holder, int position) {
-        SearchResult singleResult = results.get(position);
-        ResourceId rId = singleResult.getId();
-        String videoData = singleResult.getSnippet().getTitle();
+        //if its the last show loading
+        if (position == getItemCount()-1) {
+            //Shows LOADING, hides the rest
+            holder.listItemThumbnail.setVisibility(View.INVISIBLE);
+            holder.listItemSearchResult.setVisibility(View.INVISIBLE);
+            holder.loadingPB.setVisibility(View.INVISIBLE);
+            holder.loadingResultPB.setVisibility(View.VISIBLE);
+        } else {
+            //Hides LOADING, shows the rest
+            holder.listItemThumbnail.setVisibility(View.VISIBLE);
+            holder.listItemSearchResult.setVisibility(View.VISIBLE);
+            holder.loadingPB.setVisibility(View.VISIBLE);
+            holder.loadingResultPB.setVisibility(View.INVISIBLE);
 
-        holder.listItemSearchResult.setText(videoData);
-        holder.listItemThumbnail.setTag(R.id.videoid, rId.getVideoId());
+            SearchResult singleResult = results.get(position);
+            ResourceId rId = singleResult.getId();
+            String videoData = singleResult.getSnippet().getTitle();
 
-        //Gets state of the youtube player
-        int state = (int) holder.listItemThumbnail.getTag(R.id.initialize);
-        if (state == UNINITIALIZED)
-            //If it's not initializes, initializes
-            holder.initialize();
-        else if (state == INITIALIZED) {
-            //If it's already initialized, check if the loader is initialized
-            YouTubeThumbnailLoader loader = (YouTubeThumbnailLoader) holder.listItemThumbnail.getTag(R.id.thumbnailloader);
-            //If it's initialized, we'll need to set a new video for reuse of the loader
-            if (loader != null) {
-                //Sets loading visible, then sets video and wait for the OnThumbnailLoadedListener
-                holder.loadingIV.setVisibility(View.VISIBLE);
-                loader.setVideo(rId.getVideoId());
-                loader.setOnThumbnailLoadedListener(new YouTubeThumbnailLoader.OnThumbnailLoadedListener() {
-                    @Override
-                    public void onThumbnailLoaded(YouTubeThumbnailView youTubeThumbnailView, String s) {
-                        //After the thumbnail is loaded, we make the loading invisible again.
-                        holder.loadingIV.setVisibility(View.INVISIBLE);
-                    }
+            holder.listItemSearchResult.setText(videoData);
+            holder.listItemThumbnail.setTag(R.id.videoid, rId.getVideoId());
 
-                    @Override
-                    public void onThumbnailError(YouTubeThumbnailView youTubeThumbnailView, YouTubeThumbnailLoader.ErrorReason errorReason) {
-                        //TODO
-                    }
-                });
+            //Gets state of the youtube player
+            int state = (int) holder.listItemThumbnail.getTag(R.id.initialize);
+            if (state == UNINITIALIZED)
+                //If it's not initializes, initializes
+                holder.initialize();
+            else if (state == INITIALIZED) {
+                //If it's already initialized, check if the loader is initialized
+                YouTubeThumbnailLoader loader = (YouTubeThumbnailLoader) holder.listItemThumbnail.getTag(R.id.thumbnailloader);
+                //If it's initialized, we'll need to set a new video for reuse of the loader
+                if (loader != null) {
+                    //Sets loading visible, then sets video and wait for the OnThumbnailLoadedListener
+                    holder.loadingPB.setVisibility(View.VISIBLE);
+                    holder.listItemThumbnail.setVisibility(View.INVISIBLE);
+                    loader.setVideo(rId.getVideoId());
+                    loader.setOnThumbnailLoadedListener(new YouTubeThumbnailLoader.OnThumbnailLoadedListener() {
+                        @Override
+                        public void onThumbnailLoaded(YouTubeThumbnailView youTubeThumbnailView, String s) {
+                            //After the thumbnail is loaded, we make the loading invisible again.
+                            holder.loadingPB.setVisibility(View.INVISIBLE);
+                            holder.listItemThumbnail.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        public void onThumbnailError(YouTubeThumbnailView youTubeThumbnailView, YouTubeThumbnailLoader.ErrorReason errorReason) {
+                            //TODO
+                        }
+                    });
+                }
             }
         }
     }
@@ -210,8 +244,24 @@ public class SearchResultsAdapter extends RecyclerView.Adapter<SearchResultsAdap
      */
     public void setSearchResults(List<SearchResult> list) {
         results = list;
-        numberItems = list.size();
+        numberItems = list.size() + 1;
         notifyDataSetChanged();
     }
 
+    public void appendSearchResults(List<SearchResult> list) {
+        results.addAll(list);
+        notifyItemRangeChanged(numberItems-1, (int) MainActivity.FetchSearchResultsPage.NUMBER_OF_VIDEOS_RETURNED +2);
+        numberItems = results.size() + 1;
+    }
+
+    /**
+     * Resets the adapter.
+     */
+    public void resetState() {
+        if (results != null) {
+            results.clear();
+            numberItems = 0;
+            notifyDataSetChanged();
+        }
+    }
 }

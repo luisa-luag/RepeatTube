@@ -6,21 +6,30 @@
         android:id="@+id/ib_item_search_result"
         android:layout_height="90sp"
         android:layout_width="160sp" />
-    <ImageView
-        android:id="@+id/iv_loading_thumbnail"
-        android:layout_height="90sp"
-        android:layout_width="160sp"
-        android:src="@drawable/loading"
-        android:background="#00000000"
 
-        />
+    <ProgressBar
+        android:id="@+id/pb_loading_thumbnail"
+        android:layout_width="160sp"
+        android:layout_height="90sp"
+        android:background="#00000000"
+        android:scaleX="0.3"
+        android:scaleY="0.3"
+        android:visibility="invisible">
+
+    </ProgressBar>
     <TextView
         android:id="@+id/tv_item_search_result"
         android:layout_width="match_parent"
         android:layout_height="100sp"
         android:layout_marginLeft="160sp"
         android:fontFamily="monospace"
-        android:textSize="18sp"/>
+        android:textSize="16sp"/>
+    <ProgressBar
+        android:id="@+id/pb_load_list_result"
+        android:layout_width="42sp"
+        android:layout_height="42sp"
+        android:layout_gravity="center"
+        android:visibility="invisible" />
 
 
 </FrameLayout>

@@ -44,4 +44,5 @@ dependencies {
     compile('com.google.apis:google-api-services-youtube:v3-rev187-1.23.0') {
         exclude group: 'org.apache.httpcomponents'
     }
+    implementation 'com.android.support:cardview-v7:26.1.0'
 }
