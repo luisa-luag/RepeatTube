@@ -1,9 +1,12 @@
 package com.android.repeattube;
 
 import android.app.Application;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
@@ -42,6 +45,7 @@ public class MainActivity extends AppCompatActivity implements SearchResultsAdap
     private LinearLayoutManager rvLayoutManager;
     private String query;
     private String nextPageToken;
+    private static SQLiteDatabase db;
 
     private RecyclerView.OnScrollListener scrollListener = new RecyclerView.OnScrollListener() {
         private boolean loading = true;
@@ -103,6 +107,10 @@ public class MainActivity extends AppCompatActivity implements SearchResultsAdap
         searchResultsRV.setHasFixedSize(true);
         searchResultsRV.setAdapter(searchAdapter);
         searchResultsRV.addOnScrollListener(scrollListener);
+
+        //Setting database
+        RepeatDbHelper dbHelper = new RepeatDbHelper(this);
+        db = dbHelper.getWritableDatabase();
     }
 
     /**
@@ -141,6 +149,45 @@ public class MainActivity extends AppCompatActivity implements SearchResultsAdap
     private void loadSearchResults() {
         query = searchBox.getText().toString();
         new FetchInitialSearchResults().execute(query);
+    }
+
+    /**
+     * Queries the db to get the repeat count of a video ID.
+     * @param videoId Youtube video ID.
+     * @return Cursor to results.
+     */
+    public static int getRepeatCount(String videoId) {
+        Cursor cursor = db.query(RepeatContract.RepeatEntry.TABLE_NAME,
+                new String[]{RepeatContract.RepeatEntry.COLUMN_REPEAT_COUNT},
+                RepeatContract.RepeatEntry.COLUMN_VIDEO_ID + " = '" + videoId + "'",
+                null,
+                null,
+                null,
+                null);
+        if (cursor.getCount() < 1) {
+            cursor.close();
+            return -1;
+        }
+        cursor.moveToFirst();
+        int count = cursor.getInt(cursor.getColumnIndex(RepeatContract.RepeatEntry.COLUMN_REPEAT_COUNT));
+        cursor.close();
+        return count;
+    }
+
+    /**
+     * Inserts or updates a repeat count in the database.
+     * @param videoId Video ID.
+     * @param count Repeat count.
+     */
+    public static void insertRepeatCount(String videoId, int count) {
+        ContentValues initValues = new ContentValues();
+
+        initValues.put(RepeatContract.RepeatEntry.COLUMN_VIDEO_ID, videoId);
+        initValues.put(RepeatContract.RepeatEntry.COLUMN_REPEAT_COUNT, count);
+        db.insertWithOnConflict(RepeatContract.RepeatEntry.TABLE_NAME,
+                null,
+                initValues,
+                SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     /**

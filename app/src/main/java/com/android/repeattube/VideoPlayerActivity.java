@@ -69,7 +69,9 @@ public class VideoPlayerActivity extends YouTubeBaseActivity implements SearchRe
                 ArrayList<String> videoData = intentThatStartThisActivity.getStringArrayListExtra(Intent.EXTRA_TEXT);
                 player.cueVideo(videoData.get(0));
                 titleTV.setText(videoData.get(1));
-                viewCount = 0;
+
+                viewCount = MainActivity.getRepeatCount(videoData.get(0));
+                if (viewCount < 0) viewCount = 0;   //viewCount should be -1 if the ID is not in the database
                 String repeat = REPEATS + String.valueOf(viewCount);
                 viewCountTV.setText(repeat);
                 relatedResultsAdapter.resetState();
@@ -141,8 +143,8 @@ public class VideoPlayerActivity extends YouTubeBaseActivity implements SearchRe
 
         intentThatStartThisActivity = getIntent();
 
-        //ViewCounts
-        viewCount = 0;
+        viewCount = MainActivity.getRepeatCount(videoData.get(0));
+        if (viewCount < 0) viewCount = 0;   //viewCount should be -1 if the ID is not in the database
         String repeat = REPEATS + String.valueOf(viewCount);
         viewCountTV.setText(repeat);
     }
@@ -175,6 +177,7 @@ public class VideoPlayerActivity extends YouTubeBaseActivity implements SearchRe
         @Override
         public void onVideoEnded() {
             viewCount++;
+            MainActivity.insertRepeatCount(videoID, viewCount);
             String repeat = REPEATS + String.valueOf(viewCount);
             viewCountTV.setText(repeat);
             player.play();
